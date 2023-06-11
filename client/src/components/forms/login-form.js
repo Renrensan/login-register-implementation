@@ -8,10 +8,11 @@ import {
 } from "../../styles/shared-styles";
 
 export const LoginForm = () => {
+  axios.defaults.withCredentials = true
   const [enteredUsername, setEnteredUsername] = useState("");
   const [enteredPassword, setEnteredPassword] = useState("");
   const [authorized, setAuthorized] = useState(false);
-  const [showError, setShowError] = useState(false)
+  const [showError, setShowError] = useState(false);
 
   const handleUsernameChange = (event) => {
     setEnteredUsername(event.target.value);
@@ -25,14 +26,15 @@ export const LoginForm = () => {
       const res = await axios.post("http://localhost:5000/login", loginData);
       if (res.status === 200) {
         setAuthorized(true);
-        alert(`${res.data.user} succesfully login`)
+        const protectedRes = await axios.get("http://localhost:5000/user")
+        alert(protectedRes.data.message)
       }
     } catch (error) {
       if (error.response.status === 500) {
         console.log("Internal Server Error");
       } else if (error.response.status === 401) {
         setAuthorized(false);
-        setShowError(true)
+        setShowError(true);
         console.log(error.response.data.message);
       }
     }
