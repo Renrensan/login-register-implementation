@@ -73,7 +73,7 @@ export const LoginForm = () => {
             sx={{
               ...WhiteTextField,
             }}
-            label="Username"
+            label="Username/Email"
             variant="filled"
             value={enteredUsername}
             onChange={handleUsernameChange}

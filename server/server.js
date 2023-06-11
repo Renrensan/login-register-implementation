@@ -102,7 +102,7 @@ app.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
     const { rows } = await pool.query(
-      "SELECT user_id, password FROM users WHERE username = $1",
+      "SELECT user_id, password, username FROM users WHERE username = $1 OR email = $1",
       [username]
     );
     if (!rows[0]) {
@@ -117,7 +117,7 @@ app.post("/login", async (req, res) => {
       if (!passwordMatch) {
         res.status(401).json({ message: "Invalid Username or Password" });
       } else {
-        res.status(200).json({ message: "Login success", user: username });
+        res.status(200).json({ message: "Login success", user: userCredentials.username});
       }
     }
   } catch (error) {
