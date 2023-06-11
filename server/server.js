@@ -4,11 +4,29 @@ const app = express();
 const cors = require("cors");
 const pool = require("./connect-database");
 const bcrypt = require("bcrypt");
-
+const cookieParser = require("cookie-parser");
+const session = require("express-session");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:3000",
+  methods: ["GET", "POST"],
+  credentials:true
+}));
+
+app.use(
+  session({
+    secret: "your-secret-key",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      httpOnly: false,
+      secure: false, // Set to true if using HTTPS
+    },
+  })
+);
+app.use(cookieParser());
 
 app.listen(5000, () => {
   console.log("Connected to Server port 5000");
@@ -97,4 +115,60 @@ app.post("/register", validateEmptyRegData, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error" });
   }
+});
+
+app.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const { rows } = await pool.query(
+      "SELECT user_id, password, username, email FROM users WHERE username = $1 OR email = $1",
+      [username]
+    );
+    if (!rows[0]) {
+      res.status(401).json({ message: "Invalid Username or Password" });
+    } else {
+      const userCredentials = rows[0];
+      const passwordMatch = await bcrypt.compare(
+        password,
+        userCredentials.password
+      );
+      console.log(passwordMatch);
+      if (!passwordMatch) {
+        res.status(401).json({ message: "Invalid Username or Password" });
+      } else {
+        loggedInUser = userCredentials.username;
+        req.session.user = userCredentials;
+        console.log(req.session.user);
+        res
+          .status(200)
+          .json({ message: "Login success", user: userCredentials.username });
+      }
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+const authenticate = async (req, res, next) => {
+  console.log(req.session.user);
+  if (req.session.user) {
+    next();
+  } else {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+};
+
+app.get("/user", authenticate, async (req, res) => {
+  try {
+    const userData = req.session.user
+    res.status(200).json({ message: "You fetched the data", data:userData });
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.post('/logout', (req, res) => {
+  // Clear the session data
+  req.session.destroy();
+  res.status(200).json({ message: 'Logged out successfully' });
 });

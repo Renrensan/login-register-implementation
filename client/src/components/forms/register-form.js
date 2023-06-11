@@ -8,30 +8,30 @@ import {
 } from "../../styles/shared-styles";
 import axios from "axios";
 
-export const RegisterForm = () => {  
+export const RegisterForm = () => {
   const [enteredUsername, setEnteredUsername] = useState("");
   const [enteredEmail, setEnteredEmail] = useState("");
   const [enteredPassword, setEnteredPassword] = useState("");
   const [enteredPassConfirm, setEnteredPassConfirm] = useState("");
-  
+
   //Validation States
   const [usernameValid, setUsernameValid] = useState(true);
   const [usernameError, setUsernameError] = useState("");
-  
+
   const [emailValid, setEmailValid] = useState(true);
   const [emailError, setEmailError] = useState("");
-  
+
   const [passwordValid, setPasswordValid] = useState(true);
   const [passwordError, setPasswordError] = useState("");
-  
+
   const [passwordConfirmValid, setPasswordConfirmValid] = useState(true);
   const [passwordConfirmError, setPasswordConfirmError] = useState("");
-  
-  const[openDialog,setOpenDialog] = useState(false)
+
+  const [openDialog, setOpenDialog] = useState(false);
   const handleCloseDialog = () => {
     setOpenDialog(false);
   };
-  
+
   const post_register = async (register_data) => {
     try {
       const response = await axios.post(
@@ -43,7 +43,7 @@ export const RegisterForm = () => {
         setEnteredEmail("");
         setEnteredPassword("");
         setEnteredPassConfirm("");
-        setOpenDialog(true)
+        setOpenDialog(true);
       }
     } catch (error) {
       console.log("error");
@@ -223,7 +223,11 @@ export const RegisterForm = () => {
 
   return (
     <>
-      <SuccessDialog message = "Registration success" openDialog={openDialog} closeDialog = {handleCloseDialog}></SuccessDialog>
+      <SuccessDialog
+        message="Registration success"
+        openDialog={openDialog}
+        closeDialog={handleCloseDialog}
+      ></SuccessDialog>
       <Container sx={{ ...ContentMiddle, height: "100vh" }} color="primary">
         <Paper component="form" onSubmit={handleSubmit}>
           <Container
@@ -305,6 +309,27 @@ export const RegisterForm = () => {
               >
                 Sign Up
               </Button>
+              <Typography
+                variant="p"
+                component="p"
+                align="center"
+                sx={{
+                  color: "white",
+                  mb: 3,
+                }}
+              >
+                Already have an account?{" "}
+                <Typography
+                  href="/login"
+                  variant="a"
+                  component="a"
+                  sx={{
+                    color: "blue",
+                  }}
+                >
+                  Sign in
+                </Typography>
+              </Typography>
             </Container>
           </Container>
         </Paper>
