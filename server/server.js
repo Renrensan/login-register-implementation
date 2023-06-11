@@ -14,16 +14,7 @@ app.use(cors({
   methods: ["GET", "POST"],
   credentials:true
 }));
-// app.use((req, res, next) => {
-//   res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
-//   res.setHeader("Access-Control-Allow-Credentials", "true");
-//   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-//   res.setHeader(
-//     "Access-Control-Allow-Headers",
-//     "Origin, X-Requested-With, Content-Type, Accept"
-//   );
-//   next();
-// });
+
 app.use(
   session({
     secret: "your-secret-key",
@@ -130,7 +121,7 @@ app.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
     const { rows } = await pool.query(
-      "SELECT user_id, password, username FROM users WHERE username = $1 OR email = $1",
+      "SELECT user_id, password, username, email FROM users WHERE username = $1 OR email = $1",
       [username]
     );
     if (!rows[0]) {
@@ -146,7 +137,7 @@ app.post("/login", async (req, res) => {
         res.status(401).json({ message: "Invalid Username or Password" });
       } else {
         loggedInUser = userCredentials.username;
-        req.session.user = { loggedInUser };
+        req.session.user = userCredentials;
         console.log(req.session.user);
         res
           .status(200)
@@ -169,8 +160,15 @@ const authenticate = async (req, res, next) => {
 
 app.get("/user", authenticate, async (req, res) => {
   try {
-    res.status(200).json({ message: "You accessed protected route" });
+    const userData = req.session.user
+    res.status(200).json({ message: "You fetched the data", data:userData });
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error" });
   }
+});
+
+app.post('/logout', (req, res) => {
+  // Clear the session data
+  req.session.destroy();
+  res.status(200).json({ message: 'Logged out successfully' });
 });

@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { Container, Paper, Typography, Button, TextField } from "@mui/material";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import {
   ContentMiddle,
   WhiteTextField,
   GreyButton,
 } from "../../styles/shared-styles";
 
-export const LoginForm = () => {
-  axios.defaults.withCredentials = true
+export const LoginForm = (props) => {
+  const navigate = useNavigate();
+  axios.defaults.withCredentials = true;
   const [enteredUsername, setEnteredUsername] = useState("");
   const [enteredPassword, setEnteredPassword] = useState("");
   const [authorized, setAuthorized] = useState(false);
@@ -25,9 +27,7 @@ export const LoginForm = () => {
     try {
       const res = await axios.post("http://localhost:5000/login", loginData);
       if (res.status === 200) {
-        setAuthorized(true);
-        const protectedRes = await axios.get("http://localhost:5000/user")
-        alert(protectedRes.data.message)
+        window.location.href = "/dashboard";
       }
     } catch (error) {
       if (error.response.status === 500) {
@@ -113,6 +113,27 @@ export const LoginForm = () => {
             >
               Login
             </Button>
+            <Typography
+              variant="p"
+              component="p"
+              align="center"
+              sx={{
+                color: "white",
+                mb: 3,
+              }}
+            >
+              Dont have an account?{" "}
+              <Typography
+                href="/register"
+                variant="a"
+                component="a"
+                sx={{
+                  color: "blue",
+                }}
+              >
+                Create an account
+              </Typography>
+            </Typography>
           </Container>
         </Container>
       </Paper>
