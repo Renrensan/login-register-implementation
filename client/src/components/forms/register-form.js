@@ -28,7 +28,21 @@ export const RegisterForm = () => {
   const [passwordConfirmError, setPasswordConfirmError] = useState("");
 
   const [openDialog, setOpenDialog] = useState(false);
-  const handleCloseDialog = () => {
+  const handleCloseDialog = async () => {
+    try {
+      const loginData = {
+        username: enteredUsername,
+        password: enteredPassword,
+      };
+      const res = await axios.post("http://localhost:5000/login", loginData);
+      if (res.status === 200) {
+        window.location.href = "/dashboard";
+      }
+    } catch (error) {
+      if (error.response.status === 500) {
+        console.log("Internal Server Error");
+      }
+    }
     setOpenDialog(false);
   };
 
@@ -39,10 +53,6 @@ export const RegisterForm = () => {
         register_data
       );
       if (response.status === 200) {
-        setEnteredUsername("");
-        setEnteredEmail("");
-        setEnteredPassword("");
-        setEnteredPassConfirm("");
         setOpenDialog(true);
       }
     } catch (error) {
