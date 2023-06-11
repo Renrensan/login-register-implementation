@@ -5,7 +5,6 @@ const cors = require("cors");
 const pool = require("./connect-database");
 const bcrypt = require("bcrypt");
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
@@ -94,6 +93,33 @@ app.post("/register", validateEmptyRegData, async (req, res) => {
       [username, hashedPassword, email]
     );
     res.status(200).json({ message: "Registration successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const { rows } = await pool.query(
+      "SELECT user_id, password FROM users WHERE username = $1",
+      [username]
+    );
+    if (!rows[0]) {
+      res.status(401).json({ message: "Invalid Username or Password" });
+    } else {
+      const userCredentials = rows[0];
+      const passwordMatch = await bcrypt.compare(
+        password,
+        userCredentials.password
+      );
+      console.log(passwordMatch);
+      if (!passwordMatch) {
+        res.status(401).json({ message: "Invalid Username or Password" });
+      } else {
+        res.status(200).json({ message: "Login success", user: username });
+      }
+    }
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error" });
   }
