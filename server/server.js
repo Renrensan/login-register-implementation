@@ -6,14 +6,17 @@ const pool = require("./connect-database");
 const bcrypt = require("bcrypt");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
+const axios = require("axios");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({
-  origin: "http://localhost:3000",
-  methods: ["GET", "POST"],
-  credentials:true
-}));
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+);
 
 app.use(
   session({
@@ -27,6 +30,7 @@ app.use(
   })
 );
 app.use(cookieParser());
+axios.defaults.withCredentials = true;
 
 app.listen(5000, () => {
   console.log("Connected to Server port 5000");
@@ -132,13 +136,11 @@ app.post("/login", async (req, res) => {
         password,
         userCredentials.password
       );
-      console.log(passwordMatch);
       if (!passwordMatch) {
         res.status(401).json({ message: "Invalid Username or Password" });
       } else {
         loggedInUser = userCredentials.username;
         req.session.user = userCredentials;
-        console.log(req.session.user);
         res
           .status(200)
           .json({ message: "Login success", user: userCredentials.username });
@@ -150,7 +152,6 @@ app.post("/login", async (req, res) => {
 });
 
 const authenticate = async (req, res, next) => {
-  console.log(req.session.user);
   if (req.session.user) {
     next();
   } else {
@@ -160,15 +161,41 @@ const authenticate = async (req, res, next) => {
 
 app.get("/user", authenticate, async (req, res) => {
   try {
-    const userData = req.session.user
-    res.status(200).json({ message: "You fetched the data", data:userData });
+    const userData = req.session.user;
+    res.status(200).json({ message: "You fetched the data", data: userData });
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
-app.post('/logout', (req, res) => {
+app.post("/logout", (req, res) => {
   // Clear the session data
   req.session.destroy();
-  res.status(200).json({ message: 'Logged out successfully' });
+  res.status(200).json({ message: "Logged out successfully" });
+});
+
+app.post("/verifyCaptcha", async (req, res) => {
+  const secretKey = "6Lc_V40mAAAAAIW6W3amgDpSSfDHMahZsdj-mqtg";
+  const { responseToken } = req.body;
+  const verifySite = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${responseToken}`;
+  try {
+    const response = await axios.post(
+      verifySite,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+        },
+      }
+    );
+    const success = response.data.success;
+    if (success) {
+      res.status(200).json({ message: "Captcha Verified" });
+    }else{
+      res.status(400).json({message:"Capctha is not done"})
+    }
+  } catch (error) {
+    console.error("reCAPTCHA verification error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });

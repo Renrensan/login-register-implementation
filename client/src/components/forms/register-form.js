@@ -1,4 +1,4 @@
-import { React, useState, useEffect } from "react";
+import { React, useState, useEffect, useRef } from "react";
 import { Container, TextField, Typography, Button, Paper } from "@mui/material";
 import { SuccessDialog } from "../UI/success-dialog";
 import {
@@ -7,8 +7,10 @@ import {
   GreyButton,
 } from "../../styles/shared-styles";
 import axios from "axios";
+import ReCAPTCHA from "react-google-recaptcha";
 
 export const RegisterForm = () => {
+  axios.defaults.withCredentials = true;
   const [enteredUsername, setEnteredUsername] = useState("");
   const [enteredEmail, setEnteredEmail] = useState("");
   const [enteredPassword, setEnteredPassword] = useState("");
@@ -28,6 +30,10 @@ export const RegisterForm = () => {
   const [passwordConfirmError, setPasswordConfirmError] = useState("");
 
   const [openDialog, setOpenDialog] = useState(false);
+
+  const [displayCaptchaError, setDisplayCaptchaError] = useState(false);
+  const captchaRef = useRef();
+
   const handleCloseDialog = async () => {
     try {
       const loginData = {
@@ -109,6 +115,13 @@ export const RegisterForm = () => {
         </Typography>
       ),
     },
+    captcha: {
+      error: (
+        <Typography variant="p" component="p" sx={{ color: "red" }}>
+          Please do the captcha verification correctly
+        </Typography>
+      ),
+    },
   };
 
   const checkUsernameDuplicates = async (username) => {
@@ -148,59 +161,80 @@ export const RegisterForm = () => {
   };
 
   useEffect(() => {
-    if (enteredUsername.trim().length < 5) {
-      setUsernameValid(false);
-      if (enteredUsername.trim().length === 0) {
-        setUsernameError("Username cannot be Empty");
+    const identifier = setTimeout(() => {
+      if (enteredUsername.trim().length < 5) {
+        setUsernameValid(false);
+        if (enteredUsername.trim().length === 0) {
+          setUsernameError("Username cannot be Empty");
+        } else {
+          setUsernameError("Username must be 5 or more characters long");
+        }
       } else {
-        setUsernameError("Username must be 5 or more characters long");
+        checkUsernameDuplicates(enteredUsername);
       }
-    } else {
-      checkUsernameDuplicates(enteredUsername);
-    }
+    }, 500);
+    return () => {
+      clearTimeout(identifier);
+    };
   }, [enteredUsername]);
 
   useEffect(() => {
-    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    // Perform validation logic
-    if (enteredEmail.trim().length === 0) {
-      setEmailValid(false);
-      setEmailError("Email cannot be empty!");
-    } else if (!emailRegex.test(enteredEmail.trim())) {
-      setEmailValid(false);
-      setEmailError("Email is invalid");
-    } else {
-      checkEmailDuplicates(enteredEmail);
-    }
+    const identifier = setTimeout(() => {
+      const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+      // Perform validation logic
+      if (enteredEmail.trim().length === 0) {
+        setEmailValid(false);
+        setEmailError("Email cannot be empty!");
+      } else if (!emailRegex.test(enteredEmail.trim())) {
+        setEmailValid(false);
+        setEmailError("Email is invalid");
+      } else {
+        checkEmailDuplicates(enteredEmail);
+      }
+    });
+
+    return () => {
+      clearTimeout(identifier);
+    };
   }, [enteredEmail]);
 
   useEffect(() => {
-    if (enteredPassword.trim().length < 8) {
-      setPasswordValid(false);
-      if (enteredPassword.trim().length === 0) {
-        setPasswordError("Password cannot be empty");
+    const identifier = setTimeout(() => {
+      if (enteredPassword.trim().length < 8) {
+        setPasswordValid(false);
+        if (enteredPassword.trim().length === 0) {
+          setPasswordError("Password cannot be empty");
+        } else {
+          setPasswordError("Password have to be 8 or more characters");
+        }
       } else {
-        setPasswordError("Password have to be 8 or more characters");
+        setPasswordValid(true);
+        setPasswordError("Password is valid");
       }
-    } else {
-      setPasswordValid(true);
-      setPasswordError("Password is valid");
-    }
+    });
+    return () => {
+      clearTimeout(identifier);
+    };
   }, [enteredPassword]);
 
   useEffect(() => {
-    if (enteredPassConfirm.trim().length === 0) {
-      setPasswordConfirmValid(false);
-      setPasswordConfirmError("Password doesn't match");
-    } else {
-      if (enteredPassConfirm !== enteredPassword) {
+    const identifier = setTimeout(() => {
+      if (enteredPassConfirm.trim().length === 0) {
         setPasswordConfirmValid(false);
         setPasswordConfirmError("Password doesn't match");
       } else {
-        setPasswordConfirmValid(true);
-        setPasswordConfirmError("Password match");
+        if (enteredPassConfirm !== enteredPassword) {
+          setPasswordConfirmValid(false);
+          setPasswordConfirmError("Password doesn't match");
+        } else {
+          setPasswordConfirmValid(true);
+          setPasswordConfirmError("Password match");
+        }
       }
-    }
+      return () => {
+        clearTimeout(identifier);
+      };
+    });
   }, [enteredPassConfirm, enteredPassword]);
 
   const handleUsernameChange = (event) => {
@@ -216,7 +250,24 @@ export const RegisterForm = () => {
     setEnteredPassConfirm(event.target.value);
   };
 
-  const handleSubmit = (event) => {
+  const verifyCaptcha = async (responseToken) => {
+    try {
+      const res = await axios.post("http://localhost:5000/verifyCaptcha", {
+        responseToken,
+      });
+
+      if (res.status === 200) {
+        return true;
+      }
+    } catch (error) {
+      if (error.response.status === 400) {
+        return false;
+      }
+      console.error("reCAPTCHA verification error:", error);
+    }
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const registerData = {
       username: enteredUsername,
@@ -224,10 +275,15 @@ export const RegisterForm = () => {
       password: enteredPassword,
       passConfirm: enteredPassConfirm,
     };
+    // IF ALL FIELDS ARE VALID THEN CHECK CAPTCHA 
     if (usernameValid && emailValid && passwordValid && passwordConfirmValid) {
-      post_register(registerData);
-    } else {
-      alert("Correct Data First");
+      const captchaValid = await verifyCaptcha(captchaRef.current.getValue());
+      //IF CAPTCHA VALID THEN USER REGISTER
+      if (captchaValid) {
+        post_register(registerData);
+      } else {
+        setDisplayCaptchaError(true);
+      }
     }
   };
 
@@ -238,8 +294,8 @@ export const RegisterForm = () => {
         openDialog={openDialog}
         closeDialog={handleCloseDialog}
       ></SuccessDialog>
-      <Container sx={{ ...ContentMiddle, height: "100vh" }} color="primary">
-        <Paper component="form" onSubmit={handleSubmit}>
+      <Container sx={{ ...ContentMiddle }} color="primary">
+        <Paper sx={{ py: 5 }} component="form" onSubmit={handleSubmit}>
           <Container
             sx={{
               ...ContentMiddle,
@@ -310,6 +366,13 @@ export const RegisterForm = () => {
             {passwordConfirmValid
               ? errorMessages.passwordConfirm.success
               : errorMessages.passwordConfirm.error}
+            <Container sx={{ ...ContentMiddle, mt: 3, mb: 2 }}>
+              <ReCAPTCHA
+                sitekey="6Lc_V40mAAAAAC0K3piE7tL-ECrpxaCuJ1hj7qlm"
+                ref={captchaRef}
+              />
+              {displayCaptchaError && errorMessages.captcha.error}
+            </Container>
             <Container sx={{ ...ContentMiddle }}>
               <Button
                 type="submit"
